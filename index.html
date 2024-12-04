@@ -1,16 +1,177 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Колесо Фортуни</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f3f3f3;
+            margin: 0;
+            padding: 0;
+        }
+        canvas {
+            margin-top: 50px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        #total {
+            margin-top: 20px;
+            font-size: 20px;
+        }
+        #timer {
+            margin-top: 10px;
+            color: red;
+            font-size: 16px;
+        }
+    </style>
 </head>
 <body>
-    <div id="wheel-container">
-        <canvas id="wheel" width="500" height="500"></canvas>
-        <button id="spin">Крутити колесо</button>
-    </div>
-    <script src="script.js"></script>
+    <h1>Колесо Фортуни</h1>
+    <canvas id="wheel" width="400" height="400"></canvas>
+    <button id="spinButton" disabled>Крутити колесо</button>
+    <div id="total">Загальна сума: 0 SVX</div>
+    <div id="timer"></div>
+
+    <script>
+        const canvas = document.getElementById('wheel');
+        const ctx = canvas.getContext('2d');
+        const spinButton = document.getElementById('spinButton');
+        const totalElement = document.getElementById('total');
+        const timerElement = document.getElementById('timer');
+
+        const sectors = [
+            { color: '#FF5733', prize: 0.001 },
+            { color: '#33FF57', prize: 0.005 },
+            { color: '#5733FF', prize: 0.01 },
+            { color: '#FFC300', prize: 0.05 },
+            { color: '#FF33A1', prize: 0.1 },
+            { color: '#33FFF0', prize: 0.5 },
+            { color: '#8E44AD', prize: 1 },
+            { color: '#2980B9', prize: 3 },
+            { color: '#D35400', prize: 'x2' } // "Подвоєння"
+        ];
+
+        let total = 0; // Загальна сума
+        let spinsLeft = 3; // Доступно обертів
+        let spinning = false; // Статус обертання
+
+        const wheelRadius = canvas.width / 2;
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const sectorAngle = (2 * Math.PI) / sectors.length;
+
+        // Функція малювання колеса
+        function drawWheel() {
+            sectors.forEach((sector, index) => {
+                const startAngle = index * sectorAngle;
+                const endAngle = startAngle + sectorAngle;
+
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, wheelRadius, startAngle, endAngle);
+                ctx.fillStyle = sector.color;
+                ctx.fill();
+                ctx.stroke();
+
+                // Додаємо текст призу
+                ctx.fillStyle = '#000';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const textAngle = startAngle + sectorAngle / 2;
+                const textX = centerX + Math.cos(textAngle) * wheelRadius * 0.7;
+                const textY = centerY + Math.sin(textAngle) * wheelRadius * 0.7;
+                ctx.fillText(sector.prize, textX, textY);
+            });
+        }
+
+        // Обертання колеса
+        function spinWheel() {
+            if (spinning || spinsLeft <= 0) return;
+            spinning = true;
+
+            let rotation = Math.random() * 360 + 3600; // Випадкове обертання
+            let currentRotation = 0;
+            const animationSpeed = 10;
+
+            const interval = setInterval(() => {
+                currentRotation += animationSpeed;
+                if (currentRotation >= rotation) {
+                    clearInterval(interval);
+                    spinning = false;
+                    calculatePrize(currentRotation % 360);
+                }
+                drawWheelWithRotation(currentRotation % 360);
+            }, 20);
+        }
+
+        // Малювання обертання
+        function drawWheelWithRotation(angle) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate((angle * Math.PI) / 180);
+            ctx.translate(-centerX, -centerY);
+            drawWheel();
+            ctx.restore();
+        }
+
+        // Визначення призу
+        function calculatePrize(angle) {
+            const sectorIndex = Math.floor(angle / (360 / sectors.length));
+            const prize = sectors[sectorIndex].prize;
+
+            if (prize === 'x2') {
+                total *= 2;
+                alert('Ваш виграш подвоєно!');
+            } else {
+                total += prize;
+                alert(`Ви виграли ${prize.toFixed(3)} SVX!`);
+            }
+
+            spinsLeft--;
+            totalElement.textContent = `Загальна сума: ${total.toFixed(3)} SVX`;
+            if (spinsLeft === 0) startCooldown();
+        }
+
+        // Таймер між обертаннями
+        function startCooldown() {
+            spinButton.disabled = true;
+            let cooldown = 60; // Час очікування (в секундах)
+
+            const interval = setInterval(() => {
+                timerElement.textContent = `Чекайте: ${cooldown} сек.`;
+                cooldown--;
+
+                if (cooldown < 0) {
+                    clearInterval(interval);
+                    spinsLeft = 3;
+                    spinButton.disabled = false;
+                    timerElement.textContent = '';
+                }
+            }, 1000);
+        }
+
+        // Ініціалізація
+        drawWheel();
+
+        // Обробник кнопки
+        spinButton.addEventListener('click', spinWheel);
+        spinButton.disabled = false; // Кнопка стає активною
+    </script>
 </body>
 </html>
